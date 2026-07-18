@@ -1,0 +1,43 @@
+version: '3.8'
+services:
+  db:
+    image: postgres:15
+    restart: always
+    environment:
+      POSTGRES_USER: hetzbot
+      POSTGRES_PASSWORD: hetzbot
+      POSTGRES_DB: hetzbot
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hetzbot"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  bot:
+    build:.
+    restart: always
+    command: python bot/bot.py
+    env_file:.env
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      -.:/app
+
+  panel:
+    build:.
+    restart: always
+    command: uvicorn panel.main:app --host 0.0.0.0 --port ${PANEL_PORT}
+    ports:
+      - "${PANEL_PORT}:${PANEL_PORT}"
+    env_file:.env
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      -.:/app
+
+volumes:
+  pgdata:
